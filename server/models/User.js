@@ -1,37 +1,19 @@
-// /server/models/User.js
-
+// models/User.js
 const mongoose = require('mongoose');
 
-const UserSchema = mongoose.Schema({
-    // Since we removed login, we'll use a simple, pre-defined ID for the fixed user
-    userId: {
-        type: String,
-        required: true,
-        unique: true,
-    },
-    name: {
-        type: String,
-        required: true,
-        default: 'Café App User',
-    },
-    email: {
-        type: String,
-        required: true,
-        default: 'user@company.com',
-    },
-    defaultDrink: {
-        type: String,
-        default: 'Latte',
-    },
-    defaultSugar: {
-        type: String,
-        enum: ['Less', 'Normal', 'More'],
-        default: 'Normal',
-    },
-}, {
-    timestamps: true,
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  phone: { type: String },
+  email: { type: String },
+  // default preferences saved here
+  preferences: {
+    defaultType: { type: String, default: 'Hot' },
+    defaultSugar: { type: String, default: 'Normal' },
+    defaultQuantity: { type: Number, default: 1 },
+  },
+  // store device tokens (for notifications later)
+  expoPushTokens: { type: [String], default: [] },
+  createdAt: { type: Date, default: Date.now },
 });
 
-const User = mongoose.model('User', UserSchema);
-
-module.exports = User;
+module.exports = mongoose.model('User', UserSchema);

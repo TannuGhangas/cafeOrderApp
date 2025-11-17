@@ -1,88 +1,123 @@
-// /server/controllers/orderController.js
+// server/controllers/orderController.js
 
-const Order = require('../models/Order');
+// --- IN-MEMORY MOCK DATABASE ---
+let ordersDB = [];
+let nextOrderId = 2000;
 
-// Fixed User ID for simplified app
-const FIXED_USER_ID = 'user_123'; 
+// Helper function to simulate data aggregation for the chef dashboard
+const aggregateOrders = (timeSlot) => {
+    // 1. Filter orders by time slot (Morning/Afternoon)
+    const filteredOrders = ordersDB.filter(order => order.timeSlot === timeSlot);
 
-// @desc    Place a new order
-// @route   POST /api/orders/new
-// @access  Public
-const placeNewOrder = async (req, res) => {
-    try {
-        const { item, quantity, sugarLevel, slot } = req.body;
-
-        // 1. Basic Validation
-        if (!item || !quantity || !sugarLevel || !slot) {
-            return res.status(400).json({ message: 'Please provide all required order details.' });
+    // 2. Group by drink item and sum quantities
+    const aggregated = filteredOrders.reduce((acc, order) => {
+        // Group by item name
+        const key = order.item;
+        if (!acc[key]) {
+            acc[key] = { 
+                item: order.item, 
+                quantity: 0, 
+                status: 'New', 
+                timeSlot: timeSlot 
+            };
         }
+        acc[key].quantity += order.quantity;
 
-        // 2. Create the new order
-        const newOrder = await Order.create({
-            userId: FIXED_USER_ID, // Assign fixed user ID
-            item,
-            quantity,
-            sugarLevel,
-            slot,
-            status: 'New', // Default status upon creation
-        });
-
-        // 3. (Optional) Trigger FCM notification to the chef in a real app
-        // fcmService.sendNewOrderAlert(newOrder); 
+        // Determine overall status (if any item is 'New', the group is 'New')
+        if (order.status === 'New') {
+            acc[key].status = 'New';
+        } else if (order.status === 'Processing' && acc[key].status !== 'New') {
+            acc[key].status = 'Processing';
+        } 
         
-        res.status(201).json({ 
-            message: 'Order successfully placed!', 
-            order: newOrder 
-        });
+        return acc;
+    }, {});
 
-    } catch (error) {
-        console.error('Error placing order:', error.message);
-        res.status(500).json({ message: 'Server Error placing the order.' });
+    return Object.values(aggregated);
+};
+// --- END MOCK DATABASE ---
+
+
+// @route POST /api/orders/client/:userId
+// @desc Place a new order from a user (Client Frontend)
+export const placeNewOrder = async (req, res) => {
+    const { userId } = req.params;
+    const { name, timeSlot, items } = req.body; // items is an array of { item, quantity, sugar }
+
+    if (!items || items.length === 0) {
+        return res.status(400).json({ message: 'Order must contain items.' });
     }
+
+    const newOrders = items
+        .filter(i => i.quantity > 0) // Only save items with quantity > 0
+        .map(item => ({
+            id: nextOrderId++,
+            userId,
+            userName: name || `Employee ${userId}`, // Use name from profile
+            contact: '999-000-1111', // Mock contact
+            timeSlot,
+            item: item.item,
+            quantity: item.quantity,
+            sugar: item.sugar,
+            status: 'New',
+            createdAt: new Date().toISOString(),
+        }));
+
+    ordersDB.push(...newOrders);
+    console.log(`[Order API] New orders placed by ${name} (${newOrders.length} items)`);
+    
+    // Simulate Notification to Chef (In a real app, this would trigger a WebSocket event)
+    
+    res.status(201).json({ 
+        message: 'Order placed successfully. Awaiting confirmation.', 
+        orderCount: newOrders.length 
+    });
 };
 
-// @desc    Get all orders for the current user
-// @route   GET /api/orders/user
-// @access  Public
-const getUserOrders = async (req, res) => {
-    try {
-        // Fetch all orders associated with the fixed user ID, sorted newest first
-        const orders = await Order.find({ userId: FIXED_USER_ID })
-            .sort({ placedAt: -1 }); // -1 for descending order (newest first)
 
-        res.json(orders);
+// @route GET /api/orders/chef/aggregated
+// @desc Get aggregated orders for Chef Dashboard
+export const getAggregatedOrders = (req, res) => {
+    // In a real app, you might check if the user is authorized as a chef
+    const morningOrders = aggregateOrders('morning');
+    const afternoonOrders = aggregateOrders('afternoon');
 
-    } catch (error) {
-        console.error('Error fetching user orders:', error.message);
-        res.status(500).json({ message: 'Server Error fetching user orders.' });
-    }
+    res.json({
+        aggregated: [...morningOrders, ...afternoonOrders]
+    });
 };
 
-// @desc    Get morning/evening list (for chef admin view)
-// @route   GET /api/orders/slot/:time
-// @access  Public (should be private/admin protected in production)
-const getOrdersBySlot = async (req, res) => {
-    const { time } = req.params; // 'Morning' or 'Evening'
 
-    if (time !== 'Morning' && time !== 'Evening') {
-        return res.status(400).json({ message: 'Invalid slot time specified. Use Morning or Evening.' });
+// @route GET /api/orders/chef/detail
+// @desc Get individual orders for a specific item (Chef Detail Screen)
+export const getOrderDetail = (req, res) => {
+    const { item, timeSlot } = req.query; // Query params: ?item=Espresso Blend&timeSlot=morning
+
+    if (!item || !timeSlot) {
+        return res.status(400).json({ message: 'Missing item or timeSlot query parameter.' });
     }
 
-    try {
-        // Fetch orders for the specified slot, sorted by placement time (oldest first for preparation)
-        const orders = await Order.find({ slot: time })
-            .sort({ placedAt: 1 }); // 1 for ascending order (oldest first)
+    const details = ordersDB
+        .filter(order => order.item === item && order.timeSlot === timeSlot)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // Oldest first
 
-        res.json(orders);
-
-    } catch (error) {
-        console.error('Error fetching slot orders:', error.message);
-        res.status(500).json({ message: 'Server Error fetching slot orders.' });
-    }
+    res.json(details);
 };
 
-module.exports = {
-    placeNewOrder,
-    getUserOrders,
-    getOrdersBySlot,
+
+// @route PUT /api/orders/chef/update-status
+// @desc Update the status of a specific order item (Chef Frontend)
+export const updateOrderStatus = (req, res) => {
+    const { orderId, newStatus } = req.body;
+
+    const orderIndex = ordersDB.findIndex(order => order.id === orderId);
+
+    if (orderIndex === -1) {
+        return res.status(404).json({ message: 'Order not found.' });
+    }
+
+    ordersDB[orderIndex].status = newStatus;
+    console.log(`[Order API] Order ${orderId} updated to ${newStatus}`);
+
+    res.json({ message: `Order ${orderId} status updated to ${newStatus}.` });
 };

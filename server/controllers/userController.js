@@ -1,71 +1,78 @@
-// /server/controllers/userController.js
+// server/controllers/userController.js
 
-const User = require('../models/User');
+// --- IN-MEMORY MOCK DATABASE ---
+const mockUsers = {
+  // Uses the placeholder ID from the client app
+  'tannu-client-id': {
+      userId: 'tannu-client-id',
+      name: 'Tannu',
+      contactNo: '9876543210',
+      preferences: {
+          coffee: { quantity: 1, sugar: '1' },
+          tea: { quantity: 0, sugar: 'None' },
+      },
+  },
+};
+// --- END MOCK DATABASE ---
 
-// @desc    Get user info and preferences
-// @route   GET /api/user/preference
-// @access  Public (simplified for this app - in production, this would be private)
-const getUserPreference = async (req, res) => {
-    // Use a fixed ID since we skipped auth (e.g., 'user_123')
-    const fixedUserId = 'user_123'; 
-    
-    try {
-        let user = await User.findOne({ userId: fixedUserId });
+// @route GET /api/user/profile/:userId
+export const getUserProfile = (req, res) => {
+  const { userId } = req.params;
+  const user = mockUsers[userId];
 
-        if (!user) {
-            // If the fixed user doesn't exist, create a default profile
-            user = new User({ userId: fixedUserId });
-            await user.save();
-        }
+  if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+  }
 
-        res.json(user);
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error fetching user data' });
-    }
+  // Only return non-sensitive profile data
+  res.json({ name: user.name, contactNo: user.contactNo });
 };
 
-// @desc    Update profile/preference
-// @route   PUT /api/user/preference
-// @access  Public (simplified)
-const updateUserPreference = async (req, res) => {
-    const fixedUserId = 'user_123';
-    const { name, email, defaultDrink, defaultSugar } = req.body;
+// @route PUT /api/user/profile/:userId
+export const updateUserProfile = (req, res) => {
+  const { userId } = req.params;
+  const { name, contactNo } = req.body;
+  
+  if (mockUsers[userId]) {
+      mockUsers[userId].name = name || mockUsers[userId].name;
+      mockUsers[userId].contactNo = contactNo || mockUsers[userId].contactNo;
+      
+      // This is where a notification would be sent to the chef if the name changed
+      console.log(`[User API] Profile updated for ${userId}: Name=${name}, Contact=${contactNo}`);
+      
+      return res.json({ 
+          message: 'Profile updated successfully.', 
+          profile: { name: mockUsers[userId].name, contactNo: mockUsers[userId].contactNo }
+      });
+  }
 
-    // Basic validation
-    if (!name || !email || !defaultDrink || !defaultSugar) {
-        return res.status(400).json({ message: 'Please provide all preference fields.' });
-    }
-    
-    try {
-        const user = await User.findOneAndUpdate(
-            { userId: fixedUserId },
-            { 
-                name, 
-                email, 
-                defaultDrink, 
-                defaultSugar 
-            },
-            { new: true, runValidators: true } // Return the updated document
-        );
-
-        if (!user) {
-            return res.status(404).json({ message: 'User not found. Cannot update.' });
-        }
-
-        res.json({ 
-            message: 'User preferences updated successfully', 
-            user
-        });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error updating user preference' });
-    }
+  res.status(404).json({ message: 'User not found.' });
 };
 
-module.exports = {
-    getUserPreference,
-    updateUserPreference,
+
+// @route GET /api/user/preferences/:userId
+export const getPreferences = (req, res) => {
+  const { userId } = req.params;
+  const user = mockUsers[userId];
+  
+  if (user) {
+      return res.json({ preferences: user.preferences });
+  }
+
+  res.status(404).json({ message: 'Preferences not found.' });
+};
+
+// @route PUT /api/user/preferences/:userId
+export const updatePreferences = (req, res) => {
+  const { userId } = req.params;
+  const { preferences } = req.body;
+
+  if (mockUsers[userId]) {
+      // Simple overwrite of the preference object
+      mockUsers[userId].preferences = preferences;
+      console.log(`[User API] Preferences updated for ${userId}`);
+      return res.json({ message: 'Preferences updated successfully.' });
+  }
+
+  res.status(404).json({ message: 'User not found.' });
 };
