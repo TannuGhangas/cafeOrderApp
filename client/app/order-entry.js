@@ -19,7 +19,7 @@ const DRINK_DETAILS = {
   tea: {
     name: 'Tea',
     image: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400',
-    options: { type: ['Black Tea', 'Milk Tea'], temp: ['Hot', 'Cold'], milk: ['Dairy', 'Oat', 'None'] },
+    options: { type: ['Black Tea', 'Milk Tea', 'Green Tea'], temp: ['Hot', 'Cold'], milk: ['Dairy', 'Oat', 'None'] },
     icon: CupSoda
   },
   coffee: {
@@ -27,12 +27,6 @@ const DRINK_DETAILS = {
     image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
     options: { type: ['Black Coffee', 'Milk Coffee'], temp: ['Hot', 'Iced'], milk: ['Dairy', 'Almond', 'Coconut'] },
     icon: Coffee
-  },
-  'green-tea': {
-    name: 'Green Tea',
-    image: 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?w=400',
-    options: { type: ['Mint Green Tea', 'Lemon Green Tea', 'Plain'], temp: ['Hot', 'Iced'], milk: ['None'] },
-    icon: CupSoda
   },
   milk: {
     name: 'Milk',

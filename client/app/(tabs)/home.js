@@ -21,7 +21,6 @@ const CARD_WIDTH = (width - (SPACING * (NUM_COLUMNS + 1))) / NUM_COLUMNS;
 const DRINKS = [
   { name: 'Espresso', image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400', id: 'coffee', color: '#4A2C2A' },
   { name: 'Herbal Tea', image: 'https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=400', id: 'tea', color: '#B3674E' },
-  { name: 'Matcha', image: 'https://images.unsplash.com/photo-1627435601361-ec25f5b1d0e5?w=400', id: 'green-tea', color: '#5C8E64' },
   { name: 'Fresh Milk', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcST7XnmdF3Jvuk98wc9gJALC0lZeWk5OBt9AQ&s', id: 'milk', color: '#A9A9A9' }, 
   { name: 'Mineral Water', image: 'https://images.stockcake.com/public/b/a/4/ba483125-a815-4a61-bba9-381bb61784b0_large/glass-of-water-stockcake.jpg', id: 'water', color: '#4682B4' }, 
 ];
